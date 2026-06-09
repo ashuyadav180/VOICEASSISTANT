@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIRI — Autonomous Agent</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="glass-container">
+        <header>
+            <div class="logo">SIRI</div>
+            <div class="status-indicator" id="status-text">SYSTEM OFFLINE</div>
+        </header>
+
+        <main>
+            <!-- The glowing orb representing SIRI's brain -->
+            <div class="orb-container">
+                <div class="orb" id="siri-orb"></div>
+                <div class="orb-shadow" id="siri-orb-shadow"></div>
+            </div>
+
+            <!-- Chat / Transcript Area -->
+            <div class="transcript-container" id="transcript">
+                <div class="message system">Welcome. System initialized.</div>
+            </div>
+        </main>
+
+        <footer>
+            <div class="input-area">
+                <input type="text" id="command-input" placeholder="Type a command or say 'Hey Jarvis'..." autocomplete="off">
+                <button id="send-btn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

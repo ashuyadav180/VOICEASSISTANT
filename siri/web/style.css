@@ -1,0 +1,253 @@
+:root {
+    --bg-dark: #0a0a0c;
+    --glass-bg: rgba(20, 20, 25, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    
+    /* Orb Colors */
+    --color-idle: #3b82f6;      /* Blue */
+    --color-listening: #10b981; /* Green */
+    --color-processing: #8b5cf6;/* Purple */
+    --color-speaking: #ec4899;  /* Pink */
+    --color-sleeping: #4b5563;  /* Gray */
+    
+    --current-color: var(--color-idle);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-dark);
+    color: #f3f4f6;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    /* Subtle background glow */
+    background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.1) 0%, transparent 50%);
+}
+
+.glass-container {
+    width: 90%;
+    max-width: 1000px;
+    height: 90vh;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+header {
+    padding: 20px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.logo {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    letter-spacing: 2px;
+    background: linear-gradient(to right, #fff, #9ca3af);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.status-indicator {
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--current-color);
+    transition: color 0.5s ease;
+}
+
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+/* THE ORB */
+.orb-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    min-height: 250px;
+}
+
+.orb {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #ffffff 0%, var(--current-color) 40%, #000 100%);
+    box-shadow: 
+        0 0 40px var(--current-color),
+        inset 0 0 20px rgba(255, 255, 255, 0.5);
+    transition: all 0.5s ease;
+    animation: breathe 4s infinite ease-in-out;
+}
+
+.orb-shadow {
+    position: absolute;
+    bottom: calc(50% - 90px);
+    width: 140px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--current-color);
+    filter: blur(15px);
+    opacity: 0.5;
+    transition: all 0.5s ease;
+    animation: shadow-breathe 4s infinite ease-in-out;
+}
+
+/* Orb States */
+.state-idle { --current-color: var(--color-idle); }
+.state-listening { 
+    --current-color: var(--color-listening); 
+    animation: listen-pulse 1.5s infinite ease-in-out;
+}
+.state-processing { 
+    --current-color: var(--color-processing); 
+    animation: process-spin 2s infinite linear;
+    background: conic-gradient(from 0deg, var(--current-color), #000, var(--current-color));
+}
+.state-speaking { 
+    --current-color: var(--color-speaking); 
+    animation: speak-pulse 0.5s infinite alternate;
+}
+.state-sleeping { 
+    --current-color: var(--color-sleeping); 
+    opacity: 0.3;
+}
+
+@keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+@keyframes shadow-breathe {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.3; }
+}
+@keyframes listen-pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 20px var(--current-color); }
+    50% { transform: scale(1.15); box-shadow: 0 0 60px var(--current-color); }
+}
+@keyframes process-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+@keyframes speak-pulse {
+    0% { transform: scale(1); box-shadow: 0 0 30px var(--current-color); }
+    100% { transform: scale(1.1); box-shadow: 0 0 70px var(--current-color), 0 0 100px var(--current-color); }
+}
+
+/* Transcript Area */
+.transcript-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    background: linear-gradient(to top, rgba(0,0,0,0.4), transparent);
+    border-top: 1px solid var(--glass-border);
+}
+
+.message {
+    padding: 12px 18px;
+    border-radius: 12px;
+    max-width: 80%;
+    line-height: 1.5;
+    animation: slideUp 0.3s ease-out forwards;
+    opacity: 0;
+    transform: translateY(10px);
+}
+
+@keyframes slideUp {
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.message.user {
+    align-self: flex-end;
+    background: rgba(255, 255, 255, 0.1);
+    border-bottom-right-radius: 4px;
+}
+
+.message.assistant {
+    align-self: flex-start;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-bottom-left-radius: 4px;
+}
+
+.message.system {
+    align-self: center;
+    font-size: 0.8rem;
+    color: #9ca3af;
+}
+
+/* Footer & Input */
+footer {
+    padding: 20px 30px;
+    border-top: 1px solid var(--glass-border);
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.input-area {
+    display: flex;
+    gap: 10px;
+}
+
+input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    padding: 12px 20px;
+    border-radius: 12px;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+input:focus {
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+button {
+    background: #3b82f6;
+    color: #fff;
+    border: none;
+    width: 45px;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background 0.3s, transform 0.1s;
+}
+
+button:hover { background: #2563eb; }
+button:active { transform: scale(0.95); }
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 10px; }
