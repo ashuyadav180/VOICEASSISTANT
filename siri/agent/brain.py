@@ -173,9 +173,94 @@ class AgentBrain:
         return messages
 
     async def _call_llm(self, messages: list[dict]) -> dict:
-        if self.config.llm_provider == "anthropic":
-            return await self._call_anthropic(messages)
-        return await self._call_openai(messages)
+        primary = self.config.llm_provider
+        providers = [primary]
+        for p in ["gemini", "openai", "anthropic"]:
+            if p not in providers:
+                providers.append(p)
+
+        last_error = "No LLM provider responded."
+        for provider in providers:
+            # Check if API key is present
+            if provider == "anthropic" and not self.config.anthropic_api_key:
+                continue
+            if provider == "openai" and not self.config.openai_api_key:
+                continue
+            if provider == "gemini" and not self.config.gemini_api_key:
+                continue
+
+            try:
+                logger.info(f"Attempting to call LLM via provider: {provider}")
+                if provider == "anthropic":
+                    res = await self._call_anthropic(messages)
+                elif provider == "gemini":
+                    res = await self._call_gemini(messages)
+                else: # openai
+                    res = await self._call_openai(messages)
+                
+                # Succeeded - make it sticky
+                if provider != self.config.llm_provider:
+                    logger.info(f"Switching primary LLM provider to: {provider}")
+                    self.config.llm_provider = provider
+                return res
+            except Exception as e:
+                logger.warning(f"Provider {provider} failed: {e}")
+                last_error = f"{provider} failed: {e}"
+
+        logger.error(f"All LLM providers failed: {last_error}")
+        return {"text": f"I had trouble thinking that through. Errors: {last_error}", "tool_calls": []}
+
+    async def _call_gemini(self, messages: list[dict]) -> dict:
+        import aiohttp
+
+        primary_model = self.config.llm_model if self.config.llm_model and "gemini" in self.config.llm_model else "gemini-2.5-flash-lite"
+        models = [primary_model]
+        for m in ["gemini-2.5-flash-lite", "gemini-2.5-flash"]:
+            if m not in models:
+                models.append(m)
+
+        last_error = ""
+        for model in models:
+            payload = {
+                "model": model,
+                "messages": messages,
+                "tools": get_openai_tools(),
+                "max_tokens": 1024,
+            }
+            headers = {
+                "Authorization": f"Bearer {self.config.gemini_api_key}",
+                "Content-Type": "application/json",
+            }
+
+            try:
+                logger.info(f"Attempting Gemini model: {model}")
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+                        headers=headers,
+                        json=payload,
+                    ) as resp:
+                        data = await resp.json()
+                        if resp.status == 200:
+                            msg = data["choices"][0]["message"]
+                            tool_calls = []
+                            for tc in msg.get("tool_calls", []):
+                                tool_calls.append({
+                                    "name": tc["function"]["name"],
+                                    "arguments": json.loads(tc["function"]["arguments"]),
+                                })
+                            if model != self.config.llm_model and "gemini" in self.config.llm_model:
+                                logger.info(f"Switching primary Gemini model to: {model}")
+                                self.config.llm_model = model
+                            return {"text": msg.get("content") or "", "tool_calls": tool_calls}
+                        else:
+                            logger.warning(f"Gemini model {model} failed with status {resp.status}: {data}")
+                            last_error = f"status {resp.status}, response: {data}"
+            except Exception as e:
+                logger.warning(f"Gemini model {model} raised exception: {e}")
+                last_error = str(e)
+
+        raise RuntimeError(f"All Gemini models failed: {last_error}")
 
     async def _call_anthropic(self, messages: list[dict]) -> dict:
         import aiohttp
@@ -183,8 +268,9 @@ class AgentBrain:
         system_msg = next((m["content"] for m in messages if m["role"] == "system"), "")
         chat_msgs = [m for m in messages if m["role"] != "system"]
 
+        model = self.config.llm_model if "claude" in self.config.llm_model else "claude-3-5-sonnet-20241022"
         payload = {
-            "model": self.config.llm_model,
+            "model": model,
             "max_tokens": 1024,
             "system": system_msg,
             "messages": chat_msgs,
@@ -204,8 +290,7 @@ class AgentBrain:
             ) as resp:
                 data = await resp.json()
                 if resp.status != 200:
-                    logger.error("Anthropic error: %s", data)
-                    return {"text": "I had trouble thinking that through.", "tool_calls": []}
+                    raise RuntimeError(f"status {resp.status}, response: {data}")
 
                 tool_calls = []
                 text_parts = []
@@ -237,16 +322,17 @@ class AgentBrain:
             "Content-Type": "application/json",
         }
 
+        base_url = self.config.llm_base_url or "https://api.openai.com/v1"
+        url = f"{base_url.rstrip('/')}/chat/completions"
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                "https://api.openai.com/v1/chat/completions",
+                url,
                 headers=headers,
                 json=payload,
             ) as resp:
                 data = await resp.json()
                 if resp.status != 200:
-                    logger.error("OpenAI error: %s", data)
-                    return {"text": "I had trouble thinking that through.", "tool_calls": []}
+                    raise RuntimeError(f"status {resp.status}, response: {data}")
 
                 msg = data["choices"][0]["message"]
                 tool_calls = []

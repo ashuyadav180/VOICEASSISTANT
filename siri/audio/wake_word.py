@@ -35,15 +35,18 @@ class WakeWordDetector:
         threshold: float = 0.5,
         sample_rate: int = 16000,
         on_wake: Callable[[], None] | None = None,
+        device_index: int | None = None,
     ) -> None:
         self.wake_word = wake_word.lower()
         self.threshold = threshold
         self.sample_rate = sample_rate
         self.on_wake = on_wake
+        self.device_index = device_index
         self._model: OWWModel | None = None
         self._active = False
         self._keyboard_hooked = False
         self._clap_detector = ClapDetector(on_clap=self._trigger)
+        self._stream = None
 
         if OWW_AVAILABLE:
             try:
@@ -94,20 +97,58 @@ class WakeWordDetector:
                     break
 
     def start(self) -> None:
+        if self._active:
+            return
         self._active = True
         self._setup_keyboard_fallback()
         self._clap_detector.start()
+
+        if OWW_AVAILABLE and self._model:
+            try:
+                import sounddevice as sd
+                chunk_size = int(self.sample_rate * 0.08)
+                self._stream = sd.InputStream(
+                    device=self.device_index,
+                    samplerate=self.sample_rate,
+                    channels=1,
+                    dtype="int16",
+                    blocksize=chunk_size,
+                    callback=self._audio_callback
+                )
+                self._stream.start()
+                logger.info("Wake word microphone stream started")
+            except Exception as e:
+                logger.error("Failed to start mic stream for wake word: %s", e)
+
         logger.info("Wake word detector active (threshold=%.2f)", self.threshold)
 
     def stop(self) -> None:
+        if not self._active:
+            return
         self._active = False
         self._clap_detector.stop()
+
+        if self._stream:
+            try:
+                self._stream.stop()
+                self._stream.close()
+            except Exception:
+                pass
+            self._stream = None
+            logger.info("Wake word microphone stream stopped")
+
         if KEYBOARD_AVAILABLE and self._keyboard_hooked:
             try:
                 keyboard.remove_hotkey("ctrl+space")
             except Exception:
                 pass
             self._keyboard_hooked = False
+
+    def _audio_callback(self, indata: np.ndarray, frames: int, time_info: dict, status: any) -> None:
+        if not self._active:
+            return
+        audio_chunk = indata.flatten()
+        self.process_audio(audio_chunk)
 
     def _setup_keyboard_fallback(self) -> None:
         if not KEYBOARD_AVAILABLE:

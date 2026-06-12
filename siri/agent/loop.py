@@ -44,7 +44,7 @@ class AgentLoop:
         self._running = False
         self._listen_requested = threading.Event()
 
-        self.audio = AudioIO(config.sample_rate, config.channels)
+        self.audio = AudioIO(config.sample_rate, config.channels, device_index=config.effective_input_device)
         self.stt = STTPipeline(config)
         self.tts = TTSPipeline(config)
         self.logger = InteractionLogger(config.logs_db)
@@ -61,6 +61,7 @@ class AgentLoop:
             threshold=config.wake_word_threshold,
             sample_rate=config.sample_rate,
             on_wake=self._on_wake,
+            device_index=config.effective_input_device,
         )
 
     def _emit(self, event_type: str, payload: dict) -> None:
@@ -110,6 +111,7 @@ class AgentLoop:
             await asyncio.sleep(0.05)
 
     async def _listen_and_process(self) -> None:
+        self.wake_detector.stop()
         self._set_state(AgentState.LISTENING)
         logger.info("Listening...")
 
@@ -120,6 +122,7 @@ class AgentLoop:
 
         if audio is None or len(audio) < self.config.sample_rate * 0.3:
             self._set_state(AgentState.IDLE)
+            self.wake_detector.start()
             return
 
         self._set_state(AgentState.PROCESSING)
@@ -127,6 +130,7 @@ class AgentLoop:
 
         if not transcript or len(transcript.strip()) < 2:
             self._set_state(AgentState.IDLE)
+            self.wake_detector.start()
             return
 
         logger.info("Transcript: %s", transcript)
@@ -149,6 +153,7 @@ class AgentLoop:
         self.tts.speak(response)
         time.sleep(0.3)
         self._set_state(AgentState.IDLE)
+        self.wake_detector.start()
 
     def stop(self) -> None:
         self._running = False

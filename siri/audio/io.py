@@ -14,10 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 class AudioIO:
-    def __init__(self, sample_rate: int = 16000, channels: int = 1, chunk_ms: int = 80) -> None:
+    def __init__(self, sample_rate: int = 16000, channels: int = 1, chunk_ms: int = 80, device_index: int | None = None) -> None:
         self.sample_rate = sample_rate
         self.channels = channels
         self.chunk_size = int(sample_rate * chunk_ms / 1000)
+        self.device_index = device_index
         self._stream: sd.InputStream | None = None
         self._running = False
 
@@ -39,6 +40,7 @@ class AudioIO:
             callback(indata.copy())
 
         self._stream = sd.InputStream(
+            device=self.device_index,
             samplerate=self.sample_rate,
             channels=self.channels,
             dtype="float32",
@@ -64,6 +66,7 @@ class AudioIO:
             samplerate=self.sample_rate,
             channels=self.channels,
             dtype="float32",
+            device=self.device_index,
         )
         sd.wait()
         return audio.flatten()

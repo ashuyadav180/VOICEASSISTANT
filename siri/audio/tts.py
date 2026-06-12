@@ -119,12 +119,17 @@ class TTSPipeline:
     @staticmethod
     def _pyttsx3_speak_capture(text: str) -> np.ndarray | None:
         try:
-            import pyttsx3
+            import pythoncom
+            pythoncom.CoInitialize()
+            try:
+                import pyttsx3
 
-            engine = pyttsx3.init()
-            engine.setProperty("rate", 175)
-            engine.say(text)
-            engine.runAndWait()
+                engine = pyttsx3.init()
+                engine.setProperty("rate", 175)
+                engine.say(text)
+                engine.runAndWait()
+            finally:
+                pythoncom.CoUninitialize()
             return None  # pyttsx3 plays directly
         except Exception as e:
             logger.error("Offline TTS failed: %s", e)

@@ -41,6 +41,7 @@ class Config:
     )
     anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
     openai_api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
+    gemini_api_key: str = field(default_factory=lambda: os.getenv("GEMINI_API_KEY", ""))
     tavily_api_key: str = field(default_factory=lambda: os.getenv("TAVILY_API_KEY", ""))
 
     # LLM
@@ -48,6 +49,7 @@ class Config:
     llm_model: str = field(
         default_factory=lambda: os.getenv("LLM_MODEL", "claude-sonnet-4-20250514")
     )
+    llm_base_url: str = field(default_factory=lambda: os.getenv("LLM_BASE_URL", ""))
 
     # Audio / wake
     wake_word: str = field(default_factory=lambda: os.getenv("WAKE_WORD", "siri"))
@@ -93,7 +95,21 @@ class Config:
     def llm_api_key(self) -> str:
         if self.llm_provider == "openai":
             return self.openai_api_key
+        elif self.llm_provider == "gemini":
+            return self.gemini_api_key
         return self.anthropic_api_key
+
+    @property
+    def effective_input_device(self) -> int | None:
+        idx = os.getenv("INPUT_DEVICE_INDEX")
+        if idx is not None:
+            try:
+                val = int(idx)
+                if val >= 0:
+                    return val
+            except ValueError:
+                pass
+        return None
 
     def has_llm(self) -> bool:
         return bool(self.llm_api_key)
