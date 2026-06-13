@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-import time
 from enum import Enum
 
 import numpy as np
@@ -151,7 +150,7 @@ class AgentLoop:
         self._emit("transcript", {"role": "assistant", "text": response})
         self._set_state(AgentState.SPEAKING)
         self.tts.speak(response)
-        time.sleep(0.3)
+        await asyncio.sleep(0.3)
         self._set_state(AgentState.IDLE)
         self.wake_detector.start()
 
@@ -173,6 +172,6 @@ class AgentLoop:
             self._emit("transcript", {"role": "assistant", "text": response})
             self._set_state(AgentState.SPEAKING)
             self.tts.speak(response)
-            time.sleep(0.3)
+            await asyncio.sleep(0.3)
         self._set_state(AgentState.IDLE)
         return response
